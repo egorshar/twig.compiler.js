@@ -1,0 +1,29 @@
+{
+  "name": "twig.compiler",
+  "version": "1.0.0",
+  "description": "Twig.js templates compiler to native JavaScript code",
+  "main": "twig.compiler.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/egych/twig.compiler.git"
+  },
+  "keywords": [
+    "twig",
+    "js",
+    "compiler"
+  ],
+  "author": "Egor Sharapov",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/egych/twig.compiler/issues"
+  },
+  "homepage": "https://github.com/egych/twig.compiler",
+  "dependencies": {
+    "gulp": "^3.8.10",
+    "gulp-concat": "^2.4.3",
+    "twig": "^0.7.2"
+  }
+}

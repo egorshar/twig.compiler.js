@@ -1,0 +1,24 @@
+<html>
+  <head>
+    <title>Twig compile test</title>
+
+    <script type="text/javascript" src="./node_modules/twig/twig.js"></script>
+    <script type="text/javascript" src="./twig.compiler.js"></script>
+    <script type="text/javascript">
+      var template = twig({
+        id: '1',
+        data: '<div>The {{ foo ~ "123" }} is a {{ bar }}.</div>'
+      });
+
+      console.log(Twig.toJS(template));
+      // eval(Twig.(template));
+      // console.log(
+      //   // template
+      //   t({
+      //     foo: 'London',
+      //     bar: 'capital of Great Britain'
+      //   })
+      // );
+    </script>
+  </head>
+</html>
