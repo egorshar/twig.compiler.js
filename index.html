@@ -3,22 +3,37 @@
     <title>Twig compile test</title>
 
     <script type="text/javascript" src="./node_modules/twig/twig.js"></script>
+    <script type="text/javascript" src="./twig.deps.js"></script>
     <script type="text/javascript" src="./twig.compiler.js"></script>
     <script type="text/javascript">
-      var template = twig({
-        id: '1',
-        data: '<div>The {{ foo ~ "123" }} is a {{ bar }}.</div>'
-      });
+      var startDate = +new Date(),
+          template = twig({
+            id: '1',
+            data: '{% spaceless %}{% filter lower|escape %}<strong>SOME TEXT</strong>      <i>italic</i>{% endfilter %}{% endspaceless %}'
+            // data: '{% set c = foo ~ " (GB)" %}{% if not a and foo %}1{% else %} false {% endif %}{% if boo %}asf{% endif %} setted value is {{c}}'
+          }),
+          context = {
+            a: '',
+            boo: 1,
+            foo: 'London',
+            bar: 'capital of Great Britain'
+          };
+
+      console.info('Template precompiled: ', (+new Date()) - startDate);
 
       console.log(Twig.toJS(template));
-      // eval(Twig.(template));
-      // console.log(
-      //   // template
-      //   t({
-      //     foo: 'London',
-      //     bar: 'capital of Great Britain'
-      //   })
-      // );
+      eval(Twig.toJS(template));
+      startDate = +new Date();
+
+      console.log(t(context, _twig));
+      console.info('JS template render: ', (+new Date()) - startDate);
+      startDate = +new Date();
+
+      console.log(
+        // template
+        template.render(context)
+      );
+      console.info('Precompiled template render: ', (+new Date()) - startDate);
     </script>
   </head>
 </html>

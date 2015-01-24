@@ -1,60 +1,51 @@
-//     Twig.compiler.js
-//     Copyright (c) 2015 Egor Sharapov
-//     Available under the MIT License
-//     https://github.com/egych/twig.compiler.js
-
-// ## twig.compiler.js
-//
-// This file handles compiling templates into JS
+//  Twig.compiler.js
+//  Copyright (c) 2015 Egor Sharapov
+//  Available under the MIT License
+//  https://github.com/egych/twig.compiler.js
 (function (Twig) {
   Twig.extend(function (Twig) {
-    Twig.exports.toJS = function (template) {
-      var tokens = template.tokens,
-          id = template.id,
-          that = this,
-          context = {},
-          output = 'var t = function (ctx) {var o = "";';
+    if (!Twig.compiler) {
+      throw new Twig.Error("Twig.compiler not found.");
+    }
+
+    // It all starts here
+    Twig.compiler.toJS = function (tokens) {
+      var logic_options = {},
+          _this = this,
+          output = '(function (' + Twig.compiler.js.vars.context + ') {var ' + Twig.compiler.js.vars.output + ' = "";';
 
       Twig.forEach(tokens, function parseToken(token) {
-        Twig.log.debug("Twig.parse: ", "Parsing token: ", token);
-
         switch (token.type) {
+          // Raw output
           case Twig.token.type.raw:
-            output += 'o += TwigCore.filters.raw("' + (token.value||'').replace(/\"/g, '\\"') + '");';
-            // output.push(Twig.filters.raw(token.value));
+            output += Twig.compiler.js.vars.output + ' += "' + Twig.compiler.js.helpers.escapeQuotes(token.value) + '";';
             break;
 
+          // Logic expression (tags)
           case Twig.token.type.logic:
-            var logic_token = token.token,
-                logic = Twig.logic.parse.apply(that, [logic_token, context, chain]);
-
-            if (logic.chain !== undefined) {
-                chain = logic.chain;
-            }
-            if (logic.context !== undefined) {
-                context = logic.context;
-            }
-            if (logic.output !== undefined) {
-                output.push(logic.output);
-            }
+            output += Twig.logic.toJS.apply(_this, [token.token, logic_options]);
             break;
 
           case Twig.token.type.comment:
             // Do nothing, comments should be ignored
             break;
 
-          // case Twig.token.type.output:
-          //   Twig.log.debug("Twig.parse: ", "Output token: ", token.stack);
-          //   // Parse the given expression in the given context
-          //   console.log()
-          //   output += Twig.expression.jscompile.apply(that, [token.stack, context]);
-          //   break;
+          // Resolve expression
+          case Twig.token.type.output:
+            output += Twig.compiler.js.vars.output + ' += ' + Twig.expression.toJS.apply(_this, [token.stack]) + ';';
+            break;
         }
       });
 
-      output += 'return o;}';
+      output += 'return ' + Twig.compiler.js.vars.output + ';}(' + Twig.compiler.js.vars.context + ')||"");';
 
       return output;
+    };
+
+    Twig.exports.toJS = function (template) {
+      var tokens = template.tokens;
+
+      return 'var t = function (' + Twig.compiler.js.vars.context + ') {return ' + Twig.compiler.toJS(tokens) + '};';
     };
   });
 }(Twig || {}));
