@@ -33,7 +33,6 @@
       Twig.expression.operator.toJS(token.value, stack);
     };
 
-    // Twig.expression.handler['Twig.expression.type.string'].toJS = Twig.expression.fn.parse.push_value;
     Twig.expression.handler['Twig.expression.type.string'].toJS = function(token, stack) {
       stack.push('"' + Twig.compiler.js.helpers.escapeQuotes(token.value) + '"');
     };

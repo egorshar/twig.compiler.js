@@ -48,15 +48,13 @@
     };
 
     Twig.logic.handler['Twig.logic.type.set'].toJS = function (token, logic_options) {
-      var output,
-          value = Twig.expression.toJS.apply(this, [token.expression]);
+      var value = Twig.expression.toJS.apply(this, [token.expression]);
 
       return Twig.compiler.js.vars.context + '["' + token.key + '"]=' + value + ';';
     };
 
     Twig.logic.handler['Twig.logic.type.setcapture'].toJS = function (token, logic_options) {
-      var output,
-          value = Twig.compiler.toJS.apply(this, [token.output]);
+      var value = Twig.compiler.toJS.apply(this, [token.output]);
 
       return Twig.compiler.js.vars.context + '["' + token.key + '"]=' + value + ';';
     };
