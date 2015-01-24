@@ -56,4 +56,4 @@ var t = function(c) {
 
 ## Licence & copyright
 
-twig.compiler.js is copyright &copy; 2015 Egor Sharapov and licenced under the MIT licence. All rights not explicitly granted in the MIT license are reserved. See the included MIT-LICENSE file for more details.
+twig.compiler.js is copyright &copy; 2015 Egor Sharapov and licenced under the MIT licence. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE file for more details.
