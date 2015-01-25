@@ -1,4 +1,16 @@
-module.exports = function (Twig) {
+(function (global, Twig) {
+  if (typeof define == 'function' && define.amd) {
+    define(function() {
+      return Twig;
+    });
+  } else if (typeof module !== 'undefined' && module.exports) {
+    // Provide a CommonJS Modules/1.1 module
+    module.exports = Twig;
+  } else {
+    // Export for browser use
+    global.Twig = Twig;
+  }
+}(this, function (Twig) {
 //  Twig.compiler.helpers.js
 //  Copyright (c) 2015 Egor Sharapov
 //  Available under the MIT License
@@ -195,83 +207,33 @@ module.exports = function (Twig) {
 
     Twig.expression.handler['Twig.expression.type.variable'].toJS = function(token, stack) {
       // Get the variable from the context
-      // console.log(Twig.compiler.js.helpers.resolveValue(token.value));
       stack.push(Twig.compiler.js.helpers.resolveValue(token.value));
     };
 
     Twig.expression.handler['Twig.expression.type.key.period'].toJS = function(token, stack, context) {
-      var params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {}),
-          key = Twig.compiler.js.helpers.isInt(token.key) ? token.key : ('"' + token.key + '"'),
-          // object = '(' + stack.pop() + '||{})',
-          object = stack.pop(),
-          output = '(';
+      var key = Twig.compiler.js.helpers.isInt(token.key) ? token.key : ('"' + token.key + '"'),
+          object = stack.pop();
 
-
-
-      // console.log(key, params, object);
-
-      // if (object === null || object === undefined) {
-      //   if (this.options.strict_variables) {
-      //     throw new Twig.Error("Can't access a key " + key + " on an null or undefined object.");
-      //   } else {
-      //     return null;
-      //   }
-      // }
-
-      var capitalize = function(value) {
-        return value.substr(0, 1).toUpperCase() + value.substr(1);
-      };
-
-      // Get the variable from the context
-      output += '(typeof ' + object + ' === "object") && (' + key + ' in ' + object + ') && ';
-      output += object + '[' + key + ']';
-      output += ')||(';
-      output += '(' + object + '["get" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')] !== undefined) && '
-      output += object + '["get" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')]';
-      output += ')||(';
-      output += '(' + object + '["is" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')] !== undefined) && '
-      output += object + '["is" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')]';
-      output += ')||null';
-      // output += ')';
-
-      // } else if (object["is"+capitalize(key)] !== undefined) {
-      //   value = object["is"+capitalize(key)];
-      // } else {
-      //   value = null;
-      // }
-
-      stack.push(output);
+      stack.push('(' + Twig.compiler.js.vars.twig + '.lib.key(' + object + ', ' + key + '))');
     };
 
     Twig.expression.handler['Twig.expression.type.key.brackets'].toJS = function(token, stack, context) {
       // Evaluate key
-      var params = token.params && Twig.expression.parse.apply(this, [token.params, context]),
-          key = Twig.expression.parse.apply(this, [token.stack, context]),
+      var key = Twig.expression.toJS.apply(this, [token.stack]),
           object = stack.pop(),
-          value;
+          output = '((';;
 
-      if (object === null || object === undefined) {
-        if (this.options.strict_variables) {
-          throw new Twig.Error("Can't access a key " + key + " on an null or undefined object.");
-        } else {
-          return null;
-        }
-      }
+      output += '((typeof ' + object + ' === "object") && (' + key + ' in ' + object + ')) &&';
+      output += object + '[' + key + ']';
+      output += ')||null)';
 
-      // Get the variable from the context
-      if (typeof object === 'object' && key in object) {
-        value = object[key];
-      } else {
-        value = null;
-      }
-      console.log('asfasf');
-      stack.push(Twig.expression.resolve(value, object, params));
+      stack.push(output);
     };
 
     Twig.expression.handler['Twig.expression.type.null'].toJS = Twig.expression.fn.parse.push_value;
 
     Twig.expression.handler['Twig.expression.type.context'].toJS = function(token, stack, context) {
-      stack.push(context);
+      stack.push(Twig.compiler.js.vars.context);
     };
 
     Twig.expression.handler['Twig.expression.type.number'].toJS = Twig.expression.fn.parse.push_value;
@@ -614,5 +576,5 @@ module.exports = function (Twig) {
   });
 }(Twig || {}));
 
-return Twig
-}
+return Twig;
+}(Twig)));

@@ -26,6 +26,7 @@
     "gulp-concat": "^2.4.3",
     "gulp-wrap": "^0.10.1",
     "mocha": "^2.1.0",
+    "require-dir": "^0.1.0",
     "twig": "^0.7.2"
   }
 }

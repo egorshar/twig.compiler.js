@@ -1,11 +1,22 @@
-module.exports = function () {
+(function (global, Twig) {
+  if (typeof define == 'function' && define.amd) {
+    define(function() {
+      return Twig;
+    });
+  } else if (typeof module !== 'undefined' && module.exports) {
+    // Provide a CommonJS Modules/1.1 module
+    module.exports = Twig;
+  } else {
+    // Export for browser use
+    global._twig = Twig;
+  }
+}(this, function () {
 //  Twig.core.header.js
 //  Copyright (c) 2011-2013 John Roepke
 //  Available under the BSD 2-Clause License
 //  https://github.com/justjohn/twig.js
 //  https://github.com/egych/twig.compiler.js
-// (function (window) {
-  Twig = {};
+  var Twig = {};
 
   Twig.Markup = function(content) {
       if (typeof content === 'string' && content.length > 0) {
@@ -1606,19 +1617,24 @@ var Twig = (function (Twig) {
     return (value||'').toString().substr(0, 1).toUpperCase() + value.substr(1);
   };
 
-  // // Provide a CommonJS/AMD module export.
-  // if (typeof define == 'function' && define.amd) {
-  //     define(function() {
-  //         return Twig;
-  //     });
-  // } else if (typeof module !== 'undefined' && module.exports) {
-  //     // Provide a CommonJS Modules/1.1 module
-  //     module.exports = Twig;
-  // } else {
-  //   // Export for browser use
-  //   window._twig = Twig;
-  // }
-// }(this));
+  Twig.lib.key = function (object, key) {
+    var value = null,
+        capitalizedKey = Twig.lib.capitalize(key);
 
-return Twig
-}
+    if (typeof object === 'object' && key in object) {
+      value = object[key];
+    } else if (object["get" + capitalizedKey] !== undefined) {
+      value = object["get" + capitalizedKey];
+    } else if (object["is" + capitalizedKey] !== undefined) {
+      value = object["is" + capitalizedKey];
+    }
+
+    if (typeof value === 'function') {
+      value = value();
+    }
+
+    return value;
+  };
+
+return Twig;
+}()));
