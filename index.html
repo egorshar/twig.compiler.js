@@ -9,12 +9,15 @@
       var startDate = +new Date(),
           template = twig({
             id: '1',
-            data: '{{ _context.value }}'
+            data: '{% for item in value if item.v == 1 %}{{item.v}}{% else %}no{% endfor %}'
             // data: '{% spaceless %}{% filter lower|escape %}<strong>SOME TEXT</strong>      <i>italic</i>{% endfilter %}{% endspaceless %}'
             // data: '{% set c = foo ~ " (GB)" %}{% if not a and foo %}1{% else %} false {% endif %}{% if boo %}asf{% endif %} setted value is {{c}}'
           }),
           context = {
-            value: "test"
+            value: [
+              {v: "test"},
+              {v: "1"}
+            ]
           };
 
       console.info('Template precompiled: ', (+new Date()) - startDate);

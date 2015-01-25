@@ -45,7 +45,7 @@
     Twig.exports.toJS = function (template) {
       var tokens = template.tokens;
 
-      return 'var t = function (' + Twig.compiler.js.vars.context + ') {return ' + Twig.compiler.toJS(tokens) + '};';
+      return 'var t = function (' + Twig.compiler.js.vars.context + ') {var __last_for_else=false;return ' + Twig.compiler.toJS(tokens) + '};';
     };
   });
 }(Twig || {}));
