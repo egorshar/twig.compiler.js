@@ -21,9 +21,11 @@
     "url": "https://github.com/egych/twig.compiler/issues"
   },
   "homepage": "https://github.com/egych/twig.compiler",
-  "dependencies": {
+  "devDependencies": {
     "gulp": "^3.8.10",
     "gulp-concat": "^2.4.3",
+    "gulp-wrap": "^0.10.1",
+    "mocha": "^2.1.0",
     "twig": "^0.7.2"
   }
 }

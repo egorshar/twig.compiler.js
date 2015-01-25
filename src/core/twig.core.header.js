@@ -3,7 +3,7 @@
 //  Available under the BSD 2-Clause License
 //  https://github.com/justjohn/twig.js
 //  https://github.com/egych/twig.compiler.js
-(function (window) {
+// (function (window) {
   Twig = {};
 
   Twig.Markup = function(content) {

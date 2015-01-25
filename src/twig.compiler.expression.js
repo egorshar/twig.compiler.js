@@ -15,7 +15,7 @@
       stack.push(
         '(' +
         (token.modifier == 'not' ? '!' : '') +
-        '_twig.test("' + token.filter + '",' + value + ',' + params + ')' +
+        '_twig.test("' + token.filter + '",((' + value + ')||""),' + params + ')' +
         ')'
       );
     };
@@ -46,7 +46,7 @@
           value = '';
 
       if (token.expression) {
-        value = Twig.expression.toJSON.apply(this, [token.params]);
+        value = Twig.expression.toJS.apply(this, [token.params]);
         stack.push(value);
       } else {
         while (stack.length > 0) {
@@ -86,14 +86,36 @@
 
     Twig.expression.handler['Twig.expression.type.object.start'].toJS = Twig.expression.fn.parse.push;
 
-    Twig.expression.handler['Twig.expression.type.object.end'].toJS = function (end_token, stack, context) {
-      var obj;
+    Twig.expression.handler['Twig.expression.type.object.end'].toJS = function(end_token, stack, context) {
+        var new_object = {},
+            object_ended = false,
+            token = null,
+            has_value = false,
+            value = null,
+            _keys = [],
+            output = [];
 
-      Twig.expression.handler['Twig.expression.type.object.end'].parse.apply({}, [end_token, stack]);
-      obj = stack.pop();
-      delete obj._keys;
+      while (stack.length > 0) {
+          token = stack.pop();
 
-      stack.push(JSON.stringify(obj));
+          if (token && token.type && token.type === Twig.expression.type.object.start) {
+            object_ended = true;
+            break;
+          }
+          if (token && token.type && (token.type === Twig.expression.type.operator.binary || token.type === Twig.expression.type.operator.unary) && token.key) {
+            output.push('"' + token.key + '":' + value);
+            _keys.push(token.key);
+
+            // reset value check
+            value = null;
+            has_value = false;
+          } else {
+            has_value = true;
+            value = token;
+          }
+      }
+
+      stack.push('{' + output.join(',') + ',_keys:["' + _keys.join('","') + '"]}');
     };
 
     Twig.expression.handler['Twig.expression.type.filter'].toJS = function(token, stack) {
@@ -102,7 +124,7 @@
 
       stack.push(
         '(' +
-        '_twig.filter.apply({}, ["' + token.value + '",' + input + ',' + params + '])' +
+        '_twig.filter.apply({}, ["' + token.value + '",((' + input + ')||""),' + params + '])' +
         ')'
       );
     };
@@ -123,39 +145,52 @@
 
     Twig.expression.handler['Twig.expression.type.variable'].toJS = function(token, stack) {
       // Get the variable from the context
+      // console.log(Twig.compiler.js.helpers.resolveValue(token.value));
       stack.push(Twig.compiler.js.helpers.resolveValue(token.value));
     };
 
     Twig.expression.handler['Twig.expression.type.key.period'].toJS = function(token, stack, context) {
-      var params = token.params && Twig.expression.parse.apply(this, [token.params, context]),
-          key = token.key,
+      var params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {}),
+          key = Twig.compiler.js.helpers.isInt(token.key) ? token.key : ('"' + token.key + '"'),
+          // object = '(' + stack.pop() + '||{})',
           object = stack.pop(),
-          value;
+          output = '(';
 
-      if (object === null || object === undefined) {
-        if (this.options.strict_variables) {
-          throw new Twig.Error("Can't access a key " + key + " on an null or undefined object.");
-        } else {
-          return null;
-        }
-      }
+
+
+      // console.log(key, params, object);
+
+      // if (object === null || object === undefined) {
+      //   if (this.options.strict_variables) {
+      //     throw new Twig.Error("Can't access a key " + key + " on an null or undefined object.");
+      //   } else {
+      //     return null;
+      //   }
+      // }
 
       var capitalize = function(value) {
         return value.substr(0, 1).toUpperCase() + value.substr(1);
       };
 
       // Get the variable from the context
-      if (typeof object === 'object' && key in object) {
-        value = object[key];
-      } else if (object["get"+capitalize(key)] !== undefined) {
-        value = object["get"+capitalize(key)];
-      } else if (object["is"+capitalize(key)] !== undefined) {
-        value = object["is"+capitalize(key)];
-      } else {
-        value = null;
-      }
+      output += '(typeof ' + object + ' === "object") && (' + key + ' in ' + object + ') && ';
+      output += object + '[' + key + ']';
+      output += ')||(';
+      output += '(' + object + '["get" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')] !== undefined) && '
+      output += object + '["get" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')]';
+      output += ')||(';
+      output += '(' + object + '["is" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')] !== undefined) && '
+      output += object + '["is" + ' + Twig.compiler.js.vars.twig + '.lib.capitalize(' + key + ')]';
+      output += ')||null';
+      // output += ')';
 
-      stack.push(Twig.expression.resolve(value, object, params));
+      // } else if (object["is"+capitalize(key)] !== undefined) {
+      //   value = object["is"+capitalize(key)];
+      // } else {
+      //   value = null;
+      // }
+
+      stack.push(output);
     };
 
     Twig.expression.handler['Twig.expression.type.key.brackets'].toJS = function(token, stack, context) {
@@ -179,6 +214,7 @@
       } else {
         value = null;
       }
+      console.log('asfasf');
       stack.push(Twig.expression.resolve(value, object, params));
     };
 
@@ -189,7 +225,9 @@
     };
 
     Twig.expression.handler['Twig.expression.type.number'].toJS = Twig.expression.fn.parse.push_value;
-    Twig.expression.handler['Twig.expression.type.bool'].toJS = Twig.expression.fn.parse.push_value;
+    Twig.expression.handler['Twig.expression.type.bool'].toJS = function (token, stack) {
+      stack.push('"' + token.value + '"');
+    };
 
     Twig.expression.toJS = function (tokens, context) {
       var that = this,
