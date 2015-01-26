@@ -20,17 +20,17 @@
       );
     };
 
-    Twig.expression.handler['Twig.expression.type.operator.binary'].toJS = function (token, stack) {
+    Twig.expression.handler['Twig.expression.type.operator.binary'].toJS = function (token, stack, logic_options) {
       if (token.key) {
         // handle ternary ':' operator
         stack.push(token);
       } else {
-        Twig.expression.operator.toJS(token.value, stack);
+        Twig.expression.operator.toJS(token.value, stack, logic_options);
       }
     };
 
-    Twig.expression.handler['Twig.expression.type.operator.unary'].toJS = function(token, stack) {
-      Twig.expression.operator.toJS(token.value, stack);
+    Twig.expression.handler['Twig.expression.type.operator.unary'].toJS = function(token, stack, logic_options) {
+      Twig.expression.operator.toJS(token.value, stack, logic_options);
     };
 
     Twig.expression.handler['Twig.expression.type.string'].toJS = function(token, stack) {
@@ -152,7 +152,7 @@
       var key = Twig.compiler.js.helpers.isInt(token.key) ? token.key : ('"' + token.key + '"'),
           object = stack.pop();
 
-      stack.push('(' + Twig.compiler.js.vars.twig + '.lib.key(' + object + ', ' + key + '))');
+      stack.push('(' + Twig.compiler.js.vars.twig + '.lib.key((' + object + '||{}), ' + key + '))');
     };
 
     Twig.expression.handler['Twig.expression.type.key.brackets'].toJS = function(token, stack, context) {

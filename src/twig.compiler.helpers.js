@@ -12,7 +12,10 @@
       vars: {
         twig: '_twig',
         context: 'ctx',
-        output: 'o'
+        output: 'o',
+        for_loop: '_for_loop',
+        for_else: '_for_else_',
+        index_of_fn: '_index_of'
       },
 
       helpers: {}
@@ -43,6 +46,13 @@
 
     Twig.compiler.js.helpers.isInt = function (n) {
       return Number(n)===n && n%1===0;
+    };
+
+    Twig.compiler.js.helpers.hashCode = function (s) {
+      return (s.split("").reduce(function(a, b){
+        a = ((a<<5)-a)+b.charCodeAt(0);
+        return a & a;
+      }, 0)||"").toString().replace(/[^\d]/g, '');
     };
   });
 }(Twig || {}));

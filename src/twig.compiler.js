@@ -9,10 +9,12 @@
     }
 
     // It all starts here
-    Twig.compiler.toJS = function (tokens) {
-      var logic_options = {},
-          _this = this,
+    Twig.compiler.toJS = function (tokens, logic_options) {
+      var _this = this,
           output = '(function (' + Twig.compiler.js.vars.context + ') {var ' + Twig.compiler.js.vars.output + ' = "";';
+
+      logic_options = logic_options || {};
+      logic_options.fn = [];
 
       Twig.forEach(tokens, function parseToken(token) {
         switch (token.type) {
@@ -32,7 +34,7 @@
 
           // Resolve expression
           case Twig.token.type.output:
-            output += Twig.compiler.js.vars.output + ' += ' + Twig.expression.toJS.apply(_this, [token.stack]) + ';';
+            output += Twig.compiler.js.vars.output + ' += ' + Twig.expression.toJS.apply(_this, [token.stack, logic_options]) + ';';
             break;
         }
       });
@@ -43,9 +45,14 @@
     };
 
     Twig.exports.toJS = function (template) {
-      var tokens = template.tokens;
+      var tokens = template.tokens,
+          logic_options = {},
+          fn_str = Twig.compiler.toJS(tokens, logic_options);
 
-      return 'var t = function (' + Twig.compiler.js.vars.context + ') {var __last_for_else=false;return ' + Twig.compiler.toJS(tokens) + '};';
+      return 'var t = function (' + Twig.compiler.js.vars.context + ') {' +
+               logic_options.fn.join('') +
+               'return ' + fn_str +
+             '};';
     };
   });
 }(Twig || {}));

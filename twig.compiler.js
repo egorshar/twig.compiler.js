@@ -25,7 +25,10 @@
       vars: {
         twig: '_twig',
         context: 'ctx',
-        output: 'o'
+        output: 'o',
+        for_loop: '_for_loop',
+        for_else: '_for_else_',
+        index_of_fn: '_index_of'
       },
 
       helpers: {}
@@ -57,6 +60,13 @@
     Twig.compiler.js.helpers.isInt = function (n) {
       return Number(n)===n && n%1===0;
     };
+
+    Twig.compiler.js.helpers.hashCode = function (s) {
+      return (s.split("").reduce(function(a, b){
+        a = ((a<<5)-a)+b.charCodeAt(0);
+        return a & a;
+      }, 0)||"").toString().replace(/[^\d]/g, '');
+    };
   });
 }(Twig || {}));
 
@@ -82,17 +92,17 @@
       );
     };
 
-    Twig.expression.handler['Twig.expression.type.operator.binary'].toJS = function (token, stack) {
+    Twig.expression.handler['Twig.expression.type.operator.binary'].toJS = function (token, stack, logic_options) {
       if (token.key) {
         // handle ternary ':' operator
         stack.push(token);
       } else {
-        Twig.expression.operator.toJS(token.value, stack);
+        Twig.expression.operator.toJS(token.value, stack, logic_options);
       }
     };
 
-    Twig.expression.handler['Twig.expression.type.operator.unary'].toJS = function(token, stack) {
-      Twig.expression.operator.toJS(token.value, stack);
+    Twig.expression.handler['Twig.expression.type.operator.unary'].toJS = function(token, stack, logic_options) {
+      Twig.expression.operator.toJS(token.value, stack, logic_options);
     };
 
     Twig.expression.handler['Twig.expression.type.string'].toJS = function(token, stack) {
@@ -214,7 +224,7 @@
       var key = Twig.compiler.js.helpers.isInt(token.key) ? token.key : ('"' + token.key + '"'),
           object = stack.pop();
 
-      stack.push('(' + Twig.compiler.js.vars.twig + '.lib.key(' + object + ', ' + key + '))');
+      stack.push('(' + Twig.compiler.js.vars.twig + '.lib.key((' + object + '||{}), ' + key + '))');
     };
 
     Twig.expression.handler['Twig.expression.type.key.brackets'].toJS = function(token, stack, context) {
@@ -276,8 +286,29 @@
       throw new Twig.Error("Twig.expression.operator not found.");
     }
 
-    Twig.expression.operator.toJS = function (operator, stack) {
-      var a, b, c;
+    Twig.expression.operator.toJS = function (operator, stack, logic_options) {
+      var a, b, c,
+          fn = 'var ' +  Twig.compiler.js.vars.index_of_fn + ' = function (_b, _a) {' +
+               'var i,_keys = ((typeof _b === "object") && !_b.length) ? (_b._keys || Object.keys(_b)) : false, _l=(_keys||_b).length;' +
+               'if (!_keys) return _b.indexOf(_a) !== -1;' +
+               'for (i = 0; i < _l; i = i + 1){' +
+               'if (((_keys && _b[_keys[i]]) || (!_keys && _b[i]))===_a) return true;' +
+               '}' +
+               'return false;' +
+               '};',
+
+          indexOfLoop = function (a, b) {
+            var output = '';
+
+            // @notice logic_options.fn will be storage of all functions, that used in the template
+            if (logic_options.fn.indexOf(fn) === -1) {
+              logic_options.fn.push(fn);
+            }
+
+            output += Twig.compiler.js.vars.index_of_fn + '(' + b + ', ' + a + ')';
+
+            return output;
+          };
 
       switch (operator) {
         case ':':
@@ -330,7 +361,8 @@
         case '~':
           b = stack.pop();
           a = stack.pop();
-          stack.push('((' + a + '||"").toString()+(' + b + '||"").toString())');
+          // @todo think about how can to cache variables, because functions may perform several times
+          stack.push('((' + a + ' != null ? (' + a + ').toString() : "")+(' + b + ' != null ? (' + b + ').toString() : ""))');
           break;
 
         case 'not':
@@ -407,13 +439,13 @@
         case 'not in':
           b = stack.pop();
           a = stack.pop();
-          stack.push('(' + b + '.indexOf(' + a + ') === -1)');
+          stack.push('!' + indexOfLoop(a, b));
           break;
 
         case 'in':
           b = stack.pop();
           a = stack.pop();
-          stack.push('(' + b + '.indexOf(' + a + ') >= 0)');
+          stack.push(indexOfLoop(a, b));
           break;
 
         case '..':
@@ -464,10 +496,12 @@
       switch (logic_options.from) {
         // if else from for loop, then use special variable `__last_for_else`
         case 'for':
-          logic_options = {};
-          output = 'if (!__last_for_else){';
+          output = 'if (!' + logic_options.for_else + '){';
           output += Twig.compiler.js.vars.output + ' += ' + Twig.compiler.toJS.apply(this, [token.output]) + ';';
           output += '}';
+
+          logic_options.from = undefined;
+          logic_options.for_else = undefined;
           break;
 
         default:
@@ -486,82 +520,88 @@
     Twig.logic.handler['Twig.logic.type.for'].toJS = function (token, logic_options) {
       var result = '(' + Twig.expression.toJS.apply(this, [token.expression]) + '||{})',
           conditional = token.conditional ? Twig.expression.toJS.apply(this, [token.conditional]) : false,
-          output = '(function () {';
+          loop_fn_params = '',
+          for_else,
+          output = '';
 
-      output += 'var _obj = ' + result + ',_keys = Object.keys(_obj),_l = _keys.length,_loop_cache,i;';
-      output += '__last_for_else = false;'
-      output += 'if (_l){'; // if length
+      if (!logic_options.for_loop_exists) {
+        logic_options.for_loop_exists = true;
 
-      // @todo loop_cache should be a loop_cache + hash from result
-      output += '_loop_cache = {';
-      output +=   'loop: ' + Twig.compiler.js.vars.context + '.loop,';
-      output +=   token.value_var + ': ' + Twig.compiler.js.vars.context + '.' + token.value_var;
-      if (token.key_var) {
-      output +=   ',' + token.key_var + ': ' + Twig.compiler.js.vars.context + '.' + token.key_var;
-      }
-      output += '};'
+        output = 'var ' + Twig.compiler.js.vars.for_loop + ' = function (_for_iterator, _obj, _for_item, _for_condition, _for_key) {';
 
-      output += Twig.compiler.js.vars.context + '.loop = {'
-      output +=   'first: false,';
-      output +=   'index: 1,';
-      output +=   'index0: 0';
-      if (!conditional) {
-      output +=   ',revindex: _l,';
-      output +=   'revindex0: _l-1,';
-      output +=   'length: _l,';
-      output +=   'last: false';
-      }
-      output += '};';
+        output += 'var _keys = Object.keys(_obj),_l = _keys.length,_loop_cache,i,_for_else = false;';
+        output += 'if (_l){'; // if length
 
-      output += 'if ((_obj instanceof Object) || (_obj instanceof Array)){'; // if is array or object
-      output += 'for (i in _obj) {'; // for loop
-      output += 'if (_obj.hasOwnProperty(i) && (i != "_keys")) {'; // if hasOwnProperty and not _keys
-      output += Twig.compiler.js.vars.context + '.loop.key = ' + token.value_var + ' = i;';
-      if (token.key_var) {
-      output += Twig.compiler.js.vars.context + '.' + token.key_var + ' = i;';
-      }
-      output += Twig.compiler.js.vars.context + '.' + token.value_var + ' = _obj[i];';
-      output += Twig.compiler.js.vars.context + '.loop.first = ' + Twig.compiler.js.vars.context + '.loop.index0 === 0;';
-      if (!conditional) {
-        output += Twig.compiler.js.vars.context + '.loop.last = ' + Twig.compiler.js.vars.context + '.loop.revindex0 === 0;';
-      }
+        // @todo loop_cache should be a loop_cache + hash from result
+        output += '_loop_cache = {';
+        output +=   'loop: ' + Twig.compiler.js.vars.context + '.loop,';
+        output +=   'item: ' + Twig.compiler.js.vars.context + '[_for_item]';
+        output += '};'
+        output += 'if (_for_key !== undefined){_loop_cache.key = ' + Twig.compiler.js.vars.context + '[_for_key];}'
 
-      if (conditional) {
-        output += 'if (' + conditional + '){';
-      }
-      output += '__last_for_else = true;';
+        output += Twig.compiler.js.vars.context + '.loop = {'
+        output +=   'first: false,';
+        output +=   'index: 1,';
+        output +=   'index0: 0';
+        output += '};';
 
-      output += Twig.compiler.js.vars.output + ' += ' + Twig.compiler.toJS.apply(this, [token.output]) + ';';
-
-      if (conditional) {
-        output += Twig.compiler.js.vars.context + '.loop.index += 1;';
-        output += Twig.compiler.js.vars.context + '.loop.index0 += 1;';
+        output += 'if (_for_condition === undefined){';
+        output += Twig.compiler.js.vars.context + '.loop.revindex = _l;';
+        output += Twig.compiler.js.vars.context + '.loop.revindex0 = _l-1;';
+        output += Twig.compiler.js.vars.context + '.loop.length = _l;';
+        output += Twig.compiler.js.vars.context + '.loop.last = false;';
         output += '}';
-      } else {
+
+        output += 'if ((_obj instanceof Object) || (_obj instanceof Array)){'; // if is array or object
+        output += 'for (i in _obj) {'; // for loop
+        output += 'if (_obj.hasOwnProperty(i) && (i != "_keys")) {'; // if hasOwnProperty and not _keys
+        output += Twig.compiler.js.vars.context + '.loop.key = i;';
+        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = i;}'
+        output += Twig.compiler.js.vars.context + '[_for_item] = _obj[i];';
+        output += Twig.compiler.js.vars.context + '.loop.first = ' + Twig.compiler.js.vars.context + '.loop.index0 === 0;';
+        output += 'if (_for_condition === undefined){';
+        output += Twig.compiler.js.vars.context + '.loop.last = ' + Twig.compiler.js.vars.context + '.loop.revindex0 === 0;';
+        output += '}';
+
+        output += 'if (_for_condition === undefined || _for_condition(' + Twig.compiler.js.vars.context + ')){'; // condition start
+        output += '_for_else = true;';
+
+        output += Twig.compiler.js.vars.output + ' += _for_iterator(' + Twig.compiler.js.vars.context + ');';
+
         output += Twig.compiler.js.vars.context + '.loop.index += 1;';
         output += Twig.compiler.js.vars.context + '.loop.index0 += 1;';
+        output += 'if (_for_condition === undefined){';
         output += Twig.compiler.js.vars.context + '.loop.revindex -= 1;';
         output += Twig.compiler.js.vars.context + '.loop.revindex0 -= 1;';
-      }
-      output += '}'; // if hasOwnProperty and not _keys end
-      output += '}'; // for loop end
-      output += '}'; // if is array or object end
+        output += '}';
+        output += '}'; // condition end
 
-      output += Twig.compiler.js.vars.context + '.loop = _loop_cache.loop;';
-      output += Twig.compiler.js.vars.context + '.' + token.value_var + ' = _loop_cache.' + token.value_var + ';';
+        output += '}'; // if hasOwnProperty and not _keys end
+        output += '}'; // for loop end
+        output += '}'; // if is array or object end
+
+        output += Twig.compiler.js.vars.context + '.loop = _loop_cache.loop;';
+        output += Twig.compiler.js.vars.context + '[_for_item] = _loop_cache[_for_item];';
+        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = _loop_cache[_for_key];}'
+
+        output += '}'; // if length end
+        output += 'return _for_else;';
+        output += '};';
+      }
+
+      loop_fn_params += 'function (' + Twig.compiler.js.vars.context + ') {return ' + Twig.compiler.toJS.apply(this, [token.output]) + '},';
+      loop_fn_params += result + ',"' + token.value_var + '",';
+      loop_fn_params += conditional ? 'function (' + Twig.compiler.js.vars.context + ') {return ' + conditional + ';}' : 'undefined';
       if (token.key_var) {
-        output += Twig.compiler.js.vars.context + '.' + token.key_var + ' = _loop_cache.' + token.key_var + ';';
+      loop_fn_params += ',"' + token.key_var + '"';
       }
 
-      if (!conditional) {
-
-      }
-
-      output += '}'; // if length end
-      output += '}());';
+      for_else = Twig.compiler.js.vars.for_else + Twig.compiler.js.helpers.hashCode(loop_fn_params);
+      output += 'var ' + for_else + ' = ' + Twig.compiler.js.vars.for_loop + '(' + loop_fn_params + ');';
 
       if (conditional) {
         logic_options.from = 'for';
+        logic_options.for_else = for_else;
       }
 
       return output;
@@ -624,10 +664,12 @@
     }
 
     // It all starts here
-    Twig.compiler.toJS = function (tokens) {
-      var logic_options = {},
-          _this = this,
+    Twig.compiler.toJS = function (tokens, logic_options) {
+      var _this = this,
           output = '(function (' + Twig.compiler.js.vars.context + ') {var ' + Twig.compiler.js.vars.output + ' = "";';
+
+      logic_options = logic_options || {};
+      logic_options.fn = [];
 
       Twig.forEach(tokens, function parseToken(token) {
         switch (token.type) {
@@ -647,7 +689,7 @@
 
           // Resolve expression
           case Twig.token.type.output:
-            output += Twig.compiler.js.vars.output + ' += ' + Twig.expression.toJS.apply(_this, [token.stack]) + ';';
+            output += Twig.compiler.js.vars.output + ' += ' + Twig.expression.toJS.apply(_this, [token.stack, logic_options]) + ';';
             break;
         }
       });
@@ -658,9 +700,14 @@
     };
 
     Twig.exports.toJS = function (template) {
-      var tokens = template.tokens;
+      var tokens = template.tokens,
+          logic_options = {},
+          fn_str = Twig.compiler.toJS(tokens, logic_options);
 
-      return 'var t = function (' + Twig.compiler.js.vars.context + ') {var __last_for_else=false;return ' + Twig.compiler.toJS(tokens) + '};';
+      return 'var t = function (' + Twig.compiler.js.vars.context + ') {' +
+               logic_options.fn.join('') +
+               'return ' + fn_str +
+             '};';
     };
   });
 }(Twig || {}));
