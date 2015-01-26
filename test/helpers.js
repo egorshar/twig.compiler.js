@@ -1,9 +1,9 @@
 module.exports = {
-  getFn: function (fn_str) {
+  fn: function (fn_str) {
     return Function.apply(null, ['ctx', '_twig', fn_str + 'return t(ctx||{})']);
   },
 
-  checkAssert: function (params/* assert*/, templates, contexts) {
+  assert: function (params/* assert*/, templates, contexts) {
     var tmpl, precompiled, compiled, context;
 
     while (templates.length) {
@@ -17,7 +17,7 @@ module.exports = {
       }
 
       precompiled = params.parser({data: tmpl.data});
-      compiled = this.getFn(params.compiler.toJS(precompiled));
+      compiled = this.fn(params.compiler.toJS(precompiled));
 
       params.assert.equal(precompiled.render(tmpl.context), compiled(tmpl.context, params._twig));
     }

@@ -1,7 +1,7 @@
 var assert = require("assert");
 var helpers = require('./helpers');
 
-var assert_params = {
+var params = {
   parser: GLOBAL.twig,
   compiler: GLOBAL.TwigCompiler,
   assert: assert,
@@ -10,27 +10,27 @@ var assert_params = {
 
 describe('Twig.js Core ->', function () {
   it("should save and load a template by reference", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ "test" }}'
     ]);
   });
 
   it("should ignore comments", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       'good {# comment #}morning',
       'good{#comment#}morning'
     ]);
   });
 
   it("should ignore output tags within comments", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       'good {# {{ "Hello" }} #}morning',
       'good{#c}}om{{m{{ent#}morning'
     ]);
   });
 
   it("should ignore logic tags within comments", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       'test {# {% bad syntax if not in comment %} #}test',
       '{##}{##}test{# %}}}%}%{%{{% #}pass'
     ]);
@@ -38,7 +38,7 @@ describe('Twig.js Core ->', function () {
 
   // https://github.com/justjohn/twig.js/issues/95
   it("should ignore quotation marks within comments", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       "good {# don't stop #}morning",
       'good{#"dont stop"#}morning',
       'good {# "don\'t stop" #}morning',
@@ -50,7 +50,7 @@ describe('Twig.js Core ->', function () {
 
   it("should be able to parse output tags with tag ends in strings", function() {
     // Really all we care about here is not throwing exceptions.
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ "test" }}',
       '{{ " }} " }}',
       '{{ " \\"}} " }}',
@@ -62,7 +62,7 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should be able to output numbers", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ 12 }}',
       '{{ 12.64 }}',
       '{{ 0.64 }}'
@@ -70,14 +70,14 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should be able to output booleans", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ true }}',
       '{{ false }}'
     ]);
   });
 
   it("should be able to output strings", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ "double" }}',
       "{{ 'single' }}",
       '{{ "dou\'ble" }}',
@@ -88,7 +88,7 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should be able to output arrays", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ [1] }}',
       '{{ [1,2 ,3 ] }}',
       {
@@ -103,7 +103,7 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should be able to output parse expressions in an array", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{{ [1,2 ,1+2 ] }}',
       {
         data: '{{ [1,2 ,3 , "-", [4,5, 6] ] }}',
@@ -122,7 +122,7 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should be able to output variables", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       {
         data: '{{ orp }}',
         context: {
@@ -141,7 +141,7 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should recognize null", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       {
         data: '{{ null == val }}',
         context: {
@@ -174,13 +174,13 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should recognize object literals", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{% set at = {"foo": "test", bar: "other", 1:"zip"} %}{{ at.foo ~ at.bar ~ at.1 }}'
     ]);
   });
 
   it("should recognize null in an object", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       {
         data: '{% set at = {"foo": null} %}{{ at.foo == val }}',
         context: {
@@ -191,20 +191,20 @@ describe('Twig.js Core ->', function () {
   });
 
   it("should support set capture", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       '{% set foo %}bar{% endset %}{{foo}}'
     ]);
   });
 
   it("should support raw data", function() {
-    helpers.checkAssert(assert_params, [
+    helpers.assert(params, [
       "before {% raw %}{{ test }} {% test2 %} {{{% endraw %} after"
     ]);
   });
 
   describe("Key Notation ->", function() {
     it("should support dot key notation", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ key.value }} {{ key.sub.test }}',
           context: {
@@ -220,7 +220,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should support square bracket key notation", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ key["value"] }} {{ key[\'sub\']["test"] }}',
           context: {
@@ -236,7 +236,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should support mixed dot and bracket key notation", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ key["value"] }} {{ key.sub[key.value] }} {{ s.t["u"].v["w"] }}',
           context: {
@@ -253,7 +253,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should support dot key notation after a function", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ key.fn().value }}',
           context: {
@@ -270,7 +270,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should support bracket key notation after a function", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ key.fn()["value"] }}',
           context: {
@@ -287,7 +287,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should check for getKey methods if a key doesn't exist.", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ obj.value }}',
           context: {
@@ -305,7 +305,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should check for isKey methods if a key doesn't exist.", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ obj.value }}',
           context: {
@@ -330,7 +330,7 @@ describe('Twig.js Core ->', function () {
       Subobj.prototype = object;
       var subobj = new Subobj();
 
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ obj.value }}',
           context: {
@@ -341,7 +341,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should return null if a period key doesn't exist.", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ obj.value == null }}',
           context: {
@@ -352,7 +352,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should return null if a bracket key doesn't exist.", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ obj["value"] == null }}',
           context: {
@@ -365,7 +365,7 @@ describe('Twig.js Core ->', function () {
 
   describe("Context ->", function() {
     it("should be supported", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ _context.value }}',
           context: {
@@ -376,19 +376,19 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should be an object even if it's not passed", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         '{{ _context|json_encode }}'
       ]);
     });
 
     it("should support {% set %} tag", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         '{% set value = "test" %}{{ _context.value }}'
       ]);
     });
 
     it("should work correctly with properties named dynamically", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         {
           data: '{{ _context[key] }}',
           context: {
@@ -400,7 +400,7 @@ describe('Twig.js Core ->', function () {
     });
 
     it("should not allow to override context using {% set %}", function() {
-      helpers.checkAssert(assert_params, [
+      helpers.assert(params, [
         '{% set _context = "test" %}{{ _context|json_encode }}',
         '{% set _context = "test" %}{{ _context._context }}'
       ]);

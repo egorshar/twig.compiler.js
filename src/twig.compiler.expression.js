@@ -183,11 +183,11 @@
       var that = this,
           // The output stack
           stack = [],
-          token_template = null;;
+          token_template = null;
 
       // If the token isn't an array, make it one.
       if (!(tokens instanceof Array)) {
-          tokens = [tokens];
+        tokens = [tokens];
       }
 
       Twig.forEach(tokens, function (token) {
