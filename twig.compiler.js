@@ -114,7 +114,6 @@
     Twig.expression.handler['Twig.expression.type.parameter.end'].toJS = function(token, stack, context) {
       var new_array = [],
           array_ended = false,
-          is_json = false,
           value = '';
 
       if (token.expression) {
@@ -130,18 +129,14 @@
             break;
           }
 
-          try {
-            is_json = JSON.parse(value);
-          } catch (e) {}
-
-          new_array.unshift(is_json ? is_json : value);
+          new_array.unshift(value);
         }
 
         if (!array_ended) {
           throw new Twig.Error("Expected end of parameter set.");
         }
 
-        stack.push(new_array);
+        stack.push('[' + new_array.join(',') + ']');
       }
     };
 
@@ -159,44 +154,64 @@
     Twig.expression.handler['Twig.expression.type.object.start'].toJS = Twig.expression.fn.parse.push;
 
     Twig.expression.handler['Twig.expression.type.object.end'].toJS = function(end_token, stack, context) {
-        var new_object = {},
-            object_ended = false,
-            token = null,
-            has_value = false,
-            value = null,
-            _keys = [],
-            output = [];
+      var new_object = {},
+          object_ended = false,
+          token = null,
+          has_value = false,
+          value = null,
+          _keys = [],
+          output = [];
 
       while (stack.length > 0) {
-          token = stack.pop();
+        token = stack.pop();
 
-          if (token && token.type && token.type === Twig.expression.type.object.start) {
-            object_ended = true;
-            break;
-          }
-          if (token && token.type && (token.type === Twig.expression.type.operator.binary || token.type === Twig.expression.type.operator.unary) && token.key) {
-            output.push('"' + token.key + '":' + value);
-            _keys.push(token.key);
+        if (token && token.type && token.type === Twig.expression.type.object.start) {
+          object_ended = true;
+          break;
+        }
+        if (token && token.type && (token.type === Twig.expression.type.operator.binary || token.type === Twig.expression.type.operator.unary) && token.key) {
+          output.push('"' + token.key + '":' + value);
+          _keys.push(token.key);
 
-            // reset value check
-            value = null;
-            has_value = false;
-          } else {
-            has_value = true;
-            value = token;
-          }
+          // reset value check
+          value = null;
+          has_value = false;
+        } else {
+          has_value = true;
+          value = token;
+        }
       }
 
-      stack.push('{' + output.join(',') + ',_keys:["' + _keys.join('","') + '"]}');
+      stack.push('{' + output.join(',') + ',_keys:["' + _keys.reverse().join('","') + '"]}');
     };
 
     Twig.expression.handler['Twig.expression.type.filter'].toJS = function(token, stack) {
       var input = stack.pop(),
-          params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {});
+          params = (token.params && Twig.expression.toJS.apply(this, [token.params])) || '[]',
+          else_output = '';
+
+      switch (token.value) {
+        case 'date':
+          else_output = '||""';
+          break;
+        case 'json_encode':
+          // strange logic, but `json_encode` should return `null`, if value `undefined`
+          break;
+
+        case 'join':
+        case 'keys':
+          input = '(' + input + ')||{}';
+          break;
+
+        default:
+          input = '(' + input + ')||""';
+          break;
+      }
 
       stack.push(
         '(' +
-        '_twig.filter.apply({}, ["' + token.value + '",((' + input + ')||""),' + params + '])' +
+        '_twig.filter.apply({}, ["' + token.value + '",(' + input + '),' + params + '])' +
+        else_output +
         ')'
       );
     };
@@ -255,11 +270,11 @@
       var that = this,
           // The output stack
           stack = [],
-          token_template = null;;
+          token_template = null;
 
       // If the token isn't an array, make it one.
       if (!(tokens instanceof Array)) {
-          tokens = [tokens];
+        tokens = [tokens];
       }
 
       Twig.forEach(tokens, function (token) {
@@ -529,7 +544,7 @@
 
         output = 'var ' + Twig.compiler.js.vars.for_loop + ' = function (_for_iterator, _obj, _for_item, _for_condition, _for_key) {';
 
-        output += 'var _keys = Object.keys(_obj),_l = _keys.length,_loop_cache,i,_for_else = false;';
+        output += 'var _keys = (_obj._keys || Object.keys(_obj)),_l = _keys.length,_loop_cache,i,_key,_for_else = false;';
         output += 'if (_l){'; // if length
 
         // @todo loop_cache should be a loop_cache + hash from result
@@ -552,12 +567,12 @@
         output += Twig.compiler.js.vars.context + '.loop.last = false;';
         output += '}';
 
-        output += 'if ((_obj instanceof Object) || (_obj instanceof Array)){'; // if is array or object
-        output += 'for (i in _obj) {'; // for loop
-        output += 'if (_obj.hasOwnProperty(i) && (i != "_keys")) {'; // if hasOwnProperty and not _keys
-        output += Twig.compiler.js.vars.context + '.loop.key = i;';
-        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = i;}'
-        output += Twig.compiler.js.vars.context + '[_for_item] = _obj[i];';
+        output += 'if ((_obj instanceof Object) || (_obj instanceof Array) || (typeof _obj === "string")){'; // if is array, object or string
+        output += 'for (i = 0; i < _l; i = i + 1) {'; // for loop
+        output += '_key = _keys[i];';
+        output += Twig.compiler.js.vars.context + '.loop.key = _key;';
+        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = _key;}'
+        output += Twig.compiler.js.vars.context + '[_for_item] = _obj[_key];';
         output += Twig.compiler.js.vars.context + '.loop.first = ' + Twig.compiler.js.vars.context + '.loop.index0 === 0;';
         output += 'if (_for_condition === undefined){';
         output += Twig.compiler.js.vars.context + '.loop.last = ' + Twig.compiler.js.vars.context + '.loop.revindex0 === 0;';
@@ -576,7 +591,6 @@
         output += '}';
         output += '}'; // condition end
 
-        output += '}'; // if hasOwnProperty and not _keys end
         output += '}'; // for loop end
         output += '}'; // if is array or object end
 

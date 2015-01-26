@@ -26,6 +26,72 @@
       return content;
   };
 
+  Twig.forEach = function (arr, callback, thisArg) {
+    if (Array.prototype.forEach ) {
+      return arr.forEach(callback, thisArg);
+    }
+
+    var T, k;
+
+    if ( arr == null ) {
+      throw new TypeError( " this is null or not defined" );
+    }
+
+    // 1. Let O be the result of calling ToObject passing the |this| value as the argument.
+    var O = Object(arr);
+
+    // 2. Let lenValue be the result of calling the Get internal method of O with the argument "length".
+    // 3. Let len be ToUint32(lenValue).
+    var len = O.length >>> 0; // Hack to convert O.length to a UInt32
+
+    // 4. If IsCallable(callback) is false, throw a TypeError exception.
+    // See: http://es5.github.com/#x9.11
+    if ( {}.toString.call(callback) != "[object Function]" ) {
+      throw new TypeError( callback + " is not a function" );
+    }
+
+    // 5. If thisArg was supplied, let T be thisArg; else let T be undefined.
+    if ( thisArg ) {
+      T = thisArg;
+    }
+
+    // 6. Let k be 0
+    k = 0;
+
+    // 7. Repeat, while k < len
+    while( k < len ) {
+
+      var kValue;
+
+      // a. Let Pk be ToString(k).
+      //   This is implicit for LHS operands of the in operator
+      // b. Let kPresent be the result of calling the HasProperty internal method of O with argument Pk.
+      //   This step can be combined with c
+      // c. If kPresent is true, then
+      if ( k in O ) {
+
+        // i. Let kValue be the result of calling the Get internal method of O with argument Pk.
+        kValue = O[ k ];
+
+        // ii. Call the Call internal method of callback with T as the this value and
+        // argument list containing kValue, k, and O.
+        callback.call( T, kValue, k, O );
+      }
+      // d. Increase k by 1.
+      k++;
+    }
+    // 8. return undefined
+  };
+
+  /**
+   * Exception thrown by twig.js.
+   */
+  Twig.Error = function(message) {
+    this.message = message;
+    this.name = "TwigException";
+    this.type = "TwigException";
+  };
+
 // ## twig.lib.js
 //
 // This file contains 3rd party libraries used within twig.
@@ -402,8 +468,8 @@ var Twig = (function(Twig) {
     Twig.lib.parseISO8601Date = function (s){
         // Taken from http://n8v.enteuxis.org/2010/12/parsing-iso-8601-dates-in-javascript/
         // parenthese matches:
-        // year month day    hours minutes seconds  
-        // dotmilliseconds 
+        // year month day    hours minutes seconds
+        // dotmilliseconds
         // tzstring plusminus hours minutes
         var re = /(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(\.\d+)?(Z|([+-])(\d\d):(\d\d))/;
 
@@ -414,7 +480,7 @@ var Twig = (function(Twig) {
         //  ["2010-12-07T11:00:00.000-09:00", "2010", "12", "07", "11",
         //     "00", "00", ".000", "-09:00", "-", "09", "00"]
         // "2010-12-07T11:00:00.000Z" parses to:
-        //  ["2010-12-07T11:00:00.000Z",      "2010", "12", "07", "11", 
+        //  ["2010-12-07T11:00:00.000Z",      "2010", "12", "07", "11",
         //     "00", "00", ".000", "Z", undefined, undefined, undefined]
 
         if (! d) {
@@ -434,7 +500,7 @@ var Twig = (function(Twig) {
         var ms = Date.UTC(d[1], d[2] - 1, d[3], d[4], d[5], d[6]);
 
         // if there are milliseconds, add them
-        if (d[7] > 0) {  
+        if (d[7] > 0) {
             ms += Math.round(d[7] * 1000);
         }
 

@@ -42,7 +42,6 @@
     Twig.expression.handler['Twig.expression.type.parameter.end'].toJS = function(token, stack, context) {
       var new_array = [],
           array_ended = false,
-          is_json = false,
           value = '';
 
       if (token.expression) {
@@ -58,18 +57,14 @@
             break;
           }
 
-          try {
-            is_json = JSON.parse(value);
-          } catch (e) {}
-
-          new_array.unshift(is_json ? is_json : value);
+          new_array.unshift(value);
         }
 
         if (!array_ended) {
           throw new Twig.Error("Expected end of parameter set.");
         }
 
-        stack.push(new_array);
+        stack.push('[' + new_array.join(',') + ']');
       }
     };
 
@@ -115,16 +110,36 @@
         }
       }
 
-      stack.push('{' + output.join(',') + ',_keys:["' + _keys.join('","') + '"]}');
+      stack.push('{' + output.join(',') + ',_keys:["' + _keys.reverse().join('","') + '"]}');
     };
 
     Twig.expression.handler['Twig.expression.type.filter'].toJS = function(token, stack) {
       var input = stack.pop(),
-          params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {});
+          params = (token.params && Twig.expression.toJS.apply(this, [token.params])) || '[]',
+          else_output = '';
+
+      switch (token.value) {
+        case 'date':
+          else_output = '||""';
+          break;
+        case 'json_encode':
+          // strange logic, but `json_encode` should return `null`, if value `undefined`
+          break;
+
+        case 'join':
+        case 'keys':
+          input = '(' + input + ')||{}';
+          break;
+
+        default:
+          input = '(' + input + ')||""';
+          break;
+      }
 
       stack.push(
         '(' +
-        '_twig.filter.apply({}, ["' + token.value + '",((' + input + ')||""),' + params + '])' +
+        '_twig.filter.apply({}, ["' + token.value + '",(' + input + '),' + params + '])' +
+        else_output +
         ')'
       );
     };

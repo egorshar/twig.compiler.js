@@ -66,7 +66,7 @@
 
         output = 'var ' + Twig.compiler.js.vars.for_loop + ' = function (_for_iterator, _obj, _for_item, _for_condition, _for_key) {';
 
-        output += 'var _keys = Object.keys(_obj),_l = _keys.length,_loop_cache,i,_for_else = false;';
+        output += 'var _keys = (_obj._keys || Object.keys(_obj)),_l = _keys.length,_loop_cache,i,_key,_for_else = false;';
         output += 'if (_l){'; // if length
 
         // @todo loop_cache should be a loop_cache + hash from result
@@ -89,12 +89,12 @@
         output += Twig.compiler.js.vars.context + '.loop.last = false;';
         output += '}';
 
-        output += 'if ((_obj instanceof Object) || (_obj instanceof Array)){'; // if is array or object
-        output += 'for (i in _obj) {'; // for loop
-        output += 'if (_obj.hasOwnProperty(i) && (i != "_keys")) {'; // if hasOwnProperty and not _keys
-        output += Twig.compiler.js.vars.context + '.loop.key = i;';
-        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = i;}'
-        output += Twig.compiler.js.vars.context + '[_for_item] = _obj[i];';
+        output += 'if ((_obj instanceof Object) || (_obj instanceof Array) || (typeof _obj === "string")){'; // if is array, object or string
+        output += 'for (i = 0; i < _l; i = i + 1) {'; // for loop
+        output += '_key = _keys[i];';
+        output += Twig.compiler.js.vars.context + '.loop.key = _key;';
+        output += 'if (_for_key !== undefined){' + Twig.compiler.js.vars.context + '[_for_key] = _key;}'
+        output += Twig.compiler.js.vars.context + '[_for_item] = _obj[_key];';
         output += Twig.compiler.js.vars.context + '.loop.first = ' + Twig.compiler.js.vars.context + '.loop.index0 === 0;';
         output += 'if (_for_condition === undefined){';
         output += Twig.compiler.js.vars.context + '.loop.last = ' + Twig.compiler.js.vars.context + '.loop.revindex0 === 0;';
@@ -113,7 +113,6 @@
         output += '}';
         output += '}'; // condition end
 
-        output += '}'; // if hasOwnProperty and not _keys end
         output += '}'; // for loop end
         output += '}'; // if is array or object end
 
