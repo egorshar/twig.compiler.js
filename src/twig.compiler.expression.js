@@ -87,32 +87,32 @@
     Twig.expression.handler['Twig.expression.type.object.start'].toJS = Twig.expression.fn.parse.push;
 
     Twig.expression.handler['Twig.expression.type.object.end'].toJS = function(end_token, stack, context) {
-        var new_object = {},
-            object_ended = false,
-            token = null,
-            has_value = false,
-            value = null,
-            _keys = [],
-            output = [];
+      var new_object = {},
+          object_ended = false,
+          token = null,
+          has_value = false,
+          value = null,
+          _keys = [],
+          output = [];
 
       while (stack.length > 0) {
-          token = stack.pop();
+        token = stack.pop();
 
-          if (token && token.type && token.type === Twig.expression.type.object.start) {
-            object_ended = true;
-            break;
-          }
-          if (token && token.type && (token.type === Twig.expression.type.operator.binary || token.type === Twig.expression.type.operator.unary) && token.key) {
-            output.push('"' + token.key + '":' + value);
-            _keys.push(token.key);
+        if (token && token.type && token.type === Twig.expression.type.object.start) {
+          object_ended = true;
+          break;
+        }
+        if (token && token.type && (token.type === Twig.expression.type.operator.binary || token.type === Twig.expression.type.operator.unary) && token.key) {
+          output.push('"' + token.key + '":' + value);
+          _keys.push(token.key);
 
-            // reset value check
-            value = null;
-            has_value = false;
-          } else {
-            has_value = true;
-            value = token;
-          }
+          // reset value check
+          value = null;
+          has_value = false;
+        } else {
+          has_value = true;
+          value = token;
+        }
       }
 
       stack.push('{' + output.join(',') + ',_keys:["' + _keys.join('","') + '"]}');
