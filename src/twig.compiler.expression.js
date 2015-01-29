@@ -9,13 +9,14 @@
     }
 
     Twig.expression.handler['Twig.expression.type.test'].toJS = function (token, stack) {
-      var value = stack.pop(),
-          params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {});
+      var value = Twig.compiler.js.helpers.parseValue(stack.pop()),
+          params = (token.params && Twig.expression.toJS.apply(this, [token.params])) || '[]',
+          is_json;
 
       stack.push(
         '(' +
         (token.modifier == 'not' ? '!' : '') +
-        '_twig.test("' + token.filter + '",((' + value + ')||""),' + params + ')' +
+        '_twig.test("' + token.filter + '",(' + value + '),' + params + ')' +
         ')'
       );
     };
@@ -57,7 +58,7 @@
             break;
           }
 
-          new_array.unshift(value);
+          new_array.unshift(Twig.compiler.js.helpers.parseValue(value));
         }
 
         if (!array_ended) {

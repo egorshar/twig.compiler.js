@@ -36,7 +36,7 @@
 
     Twig.compiler.js.helpers.regex = {
       space_between_tags: />\s+</g,
-      new_lines_between_tags: />[\n|\r]{1,}</g,
+      new_lines_between_tags: />[\\n\s|\\r\s]{1,}</g,
       slashes: /\\/g,
       new_lines: /\n|\r/g,
       quotes: /(\"|\')/g
@@ -67,6 +67,27 @@
         return a & a;
       }, 0)||"").toString().replace(/[^\d]/g, '');
     };
+
+    Twig.compiler.js.helpers.parseValue = function (value) {
+      var is_json;
+
+      try {
+        is_json = JSON.parse(value);
+
+        switch (is_json) {
+          case 'true': is_json = true; break;
+          case 'false': is_json = false; break;
+        }
+      } catch (e) {}
+
+      if (is_json !== undefined) {
+        if ((typeof is_json === 'boolean') || (typeof is_json === 'number')) {
+          return is_json;
+        }
+      }
+
+      return value;
+    }
   });
 }(Twig || {}));
 
@@ -81,13 +102,14 @@
     }
 
     Twig.expression.handler['Twig.expression.type.test'].toJS = function (token, stack) {
-      var value = stack.pop(),
-          params = JSON.stringify((token.params && Twig.expression.toJS.apply(this, [token.params])) || {});
+      var value = Twig.compiler.js.helpers.parseValue(stack.pop()),
+          params = (token.params && Twig.expression.toJS.apply(this, [token.params])) || '[]',
+          is_json;
 
       stack.push(
         '(' +
         (token.modifier == 'not' ? '!' : '') +
-        '_twig.test("' + token.filter + '",((' + value + ')||""),' + params + ')' +
+        '_twig.test("' + token.filter + '",(' + value + '),' + params + ')' +
         ')'
       );
     };
@@ -129,7 +151,7 @@
             break;
           }
 
-          new_array.unshift(value);
+          new_array.unshift(Twig.compiler.js.helpers.parseValue(value));
         }
 
         if (!array_ended) {
@@ -652,7 +674,7 @@
 
       return Twig.compiler.js.vars.output + ' += ' + unfiltered
         .replace(Twig.compiler.js.helpers.regex.space_between_tags, '><')
-        .replace(Twig.compiler.js.helpers.regex.new_lines_between_tags, '')
+        .replace(Twig.compiler.js.helpers.regex.new_lines_between_tags, '><')
         .trim();
     };
 

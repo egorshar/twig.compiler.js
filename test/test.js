@@ -7,3 +7,7 @@ GLOBAL.twig = Twig.twig;
 require('./test.core');
 require('./test.expressions');
 require('./test.filters');
+// require('./test.functions');
+require('./test.regression');
+require('./test.tags');
+require('./test.tests');

@@ -23,7 +23,7 @@
 
     Twig.compiler.js.helpers.regex = {
       space_between_tags: />\s+</g,
-      new_lines_between_tags: />[\n|\r]{1,}</g,
+      new_lines_between_tags: />[\\n\s|\\r\s]{1,}</g,
       slashes: /\\/g,
       new_lines: /\n|\r/g,
       quotes: /(\"|\')/g
@@ -54,5 +54,26 @@
         return a & a;
       }, 0)||"").toString().replace(/[^\d]/g, '');
     };
+
+    Twig.compiler.js.helpers.parseValue = function (value) {
+      var is_json;
+
+      try {
+        is_json = JSON.parse(value);
+
+        switch (is_json) {
+          case 'true': is_json = true; break;
+          case 'false': is_json = false; break;
+        }
+      } catch (e) {}
+
+      if (is_json !== undefined) {
+        if ((typeof is_json === 'boolean') || (typeof is_json === 'number')) {
+          return is_json;
+        }
+      }
+
+      return value;
+    }
   });
 }(Twig || {}));

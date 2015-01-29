@@ -170,7 +170,7 @@
 
       return Twig.compiler.js.vars.output + ' += ' + unfiltered
         .replace(Twig.compiler.js.helpers.regex.space_between_tags, '><')
-        .replace(Twig.compiler.js.helpers.regex.new_lines_between_tags, '')
+        .replace(Twig.compiler.js.helpers.regex.new_lines_between_tags, '><')
         .trim();
     };
 
