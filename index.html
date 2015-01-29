@@ -2,7 +2,7 @@
   <head>
     <title>Twig compile test</title>
 
-    <script type="text/javascript" src="./node_modules/twig/twig.js"></script>
+    <script type="text/javascript" src="./twig.js/twig.js"></script>
     <script type="text/javascript" src="./twig.deps.js"></script>
     <script type="text/javascript" src="./twig.compiler.js"></script>
     <script type="text/javascript">
@@ -10,11 +10,12 @@
           template = twig({
             id: '1',
             // {{ "value" in {"key" : "value", "2": "other"} }}
-            data: '{{ "I like positive numbers like %+05d."|format(123) }}'
+            data: "{{ []|first }}"
             // data: '{% spaceless %}{% filter lower|escape %}<strong>SOME TEXT</strong>      <i>italic</i>{% endfilter %}{% endspaceless %}'
             // data: '{% set c = foo ~ " (GB)" %}{% if not a and foo %}1{% else %} false {% endif %}{% if boo %}asf{% endif %} setted value is {{c}}'
           }),
           context = {
+            myemptystr: ""
           };
 
       console.info('Template precompiled: ', (+new Date()) - startDate);

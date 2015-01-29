@@ -110,7 +110,7 @@
         }
       }
 
-      stack.push('{' + output.join(',') + ',_keys:["' + _keys.reverse().join('","') + '"]}');
+      stack.push('{' + output.join(',') + (output.length ? ',' : '') + (_keys.length ? '_keys:["' + _keys.reverse().join('","') + '"]' : '') + '}');
     };
 
     Twig.expression.handler['Twig.expression.type.filter'].toJS = function(token, stack) {
@@ -124,6 +124,10 @@
           break;
         case 'json_encode':
           // strange logic, but `json_encode` should return `null`, if value `undefined`
+          break;
+
+        case 'first':
+          input = '(' + input + '.length) || (' + input + '._keys) ? ' + input + ' : ""';
           break;
 
         case 'join':
