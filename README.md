@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/egych/twig.compiler.js.svg?branch=master)](https://travis-ci.org/egych/twig.compiler.js)
+[![Build Status](https://travis-ci.org/egorshar/twig.compiler.js.svg?branch=master)](https://travis-ci.org/egorshar/twig.compiler.js)
 # twig.compiler.js
 
 Convert twig templates to native JavaScript code
